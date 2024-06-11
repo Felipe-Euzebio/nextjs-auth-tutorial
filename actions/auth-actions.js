@@ -2,6 +2,7 @@
 
 import { hashUserPassword } from "@/lib/hash";
 import { createUser } from "@/lib/user";
+import { redirect } from "next/dist/server/api-utils";
 
 export async function signup(prevState, formData) {
     const email = formData.get('email');
@@ -13,7 +14,7 @@ export async function signup(prevState, formData) {
         errors.email = 'Please enter a valid email address';
     }
 
-    if (!password.trim().length < 8) {
+    if (password.trim().length < 8) {
         errors.password = 'Password must be at least 8 characters long';
     }
 
@@ -23,5 +24,19 @@ export async function signup(prevState, formData) {
 
     const hashedPassword = hashUserPassword(password);
 
-    createUser(email, hashedPassword);
+    try {
+        createUser(email, hashedPassword);
+    } catch (error) {
+        if (error.code === 'SQLITE_CONSTRAINT') {
+            return { 
+                errors: {
+                    email: 'This email is already in use'
+                }   
+            };
+        }
+
+        throw error;
+    }
+
+    redirect('/training');
 }
